@@ -1,7 +1,14 @@
-# 悬浮表情球 · dsh Web 插件
+# Deepseek little expressions of · 悬浮表情球
 
-> 把 [Grok Ball](https://github.com/tycoding/grok-ball) 表情球做成 **dsh Web 界面里的悬浮球**：
-> 会盯着鼠标看、可以拖着满屏跑、内置 32 种表情，位置和设置自动记住。
+> dsh Web 界面上的**悬浮表情球插件**：会盯着鼠标看、可以拖着满屏跑、内置 32 种表情，
+> 位置和设置自动记住；跑任务时会「忙起来」，还会用聊天气泡把情绪说出来。
+> 表情引擎来自 [Grok Ball](https://github.com/tycoding/grok-ball)（MIT）。
+
+仓库：<https://github.com/vkxkzsp769-cloud/Deepseek-little-expressions-of>
+
+```sh
+dsh plugin --profile web add git+https://github.com/vkxkzsp769-cloud/Deepseek-little-expressions-of.git
+```
 
 一个会「看」你的圆球，浮在整个 dsh Web 界面上方（不遮挡操作，只有球本身接收鼠标事件）。
 
@@ -24,11 +31,11 @@
 
 ```sh
 # 方式一：直接从 GitHub 安装（推荐）
-dsh plugin --profile web add git+https://github.com/vkxkzsp769-cloud/dsh-float-ball.git
+dsh plugin --profile web add git+https://github.com/vkxkzsp769-cloud/Deepseek-little-expressions-of.git
 
 # 方式二：克隆后本地安装
-git clone https://github.com/vkxkzsp769-cloud/dsh-float-ball.git
-dsh plugin --profile web add ./dsh-float-ball
+git clone https://github.com/vkxkzsp769-cloud/Deepseek-little-expressions-of.git
+dsh plugin --profile web add ./Deepseek-little-expressions-of
 
 # 方式三：本地打包安装（仓库里已有预构建产物，clone 后无需编译）
 npm pack

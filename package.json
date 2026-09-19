@@ -42,8 +42,19 @@
     "dsh-plugin",
     "dsh-web",
     "deepseek-harness",
-    "grok-ball",
+    "desktop-pet",
     "emotion-ball",
-    "floating"
-  ]
+    "grok-ball",
+    "floating",
+    "llm"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vkxkzsp769-cloud/Deepseek-little-expressions-of.git"
+  },
+  "homepage": "https://github.com/vkxkzsp769-cloud/Deepseek-little-expressions-of#readme",
+  "bugs": {
+    "url": "https://github.com/vkxkzsp769-cloud/Deepseek-little-expressions-of/issues"
+  },
+  "author": "vkxkzsp769-cloud"
 }
