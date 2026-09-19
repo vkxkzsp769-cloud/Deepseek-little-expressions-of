@@ -23,14 +23,21 @@
 ## 📦 安装
 
 ```sh
-# 方式一：打包后安装（推荐，pnpm 解包复制，没有软链接带来的模块解析问题）
-cd /sdcard/我的文件/linux共享/dsh-float-pet
-npm pack
-dsh plugin --profile web add /sdcard/我的文件/linux共享/dsh-float-pet/dsh-local-dsh-client-ui-float-ball-0.1.0.tgz
+# 方式一：直接从 GitHub 安装（推荐）
+dsh plugin --profile web add git+https://github.com/<你的用户名>/dsh-float-ball.git
 
-# 方式二：直接从目录安装（pnpm 会创建软链接）
-dsh plugin --profile web add /sdcard/我的文件/linux共享/dsh-float-pet
+# 方式二：克隆后本地安装
+git clone https://github.com/<你的用户名>/dsh-float-ball.git
+dsh plugin --profile web add ./dsh-float-ball
+
+# 方式三：本地打包安装（仓库里已有预构建产物，clone 后无需编译）
+npm pack
+dsh plugin --profile web add dsh-local-dsh-client-ui-float-ball-0.1.0.tgz
 ```
+
+> 客户端 bundle（`lib/client.js`）已预构建并随仓库提交，装完**重启 `dsh web`** 即可，
+> 不需要 pnpm / 构建工具链。这与 [dsh-client-ui-games](https://github.com/vkxkzsp769-cloud/Chinese-Chess-and-Gomoku)、
+> [dsh-client-ui-skin-center](https://github.com/zhu1090093659/dsh-web-ui) 等社区客户端的安装方式一致。
 
 安装完成后 **重启 `dsh web`**：客户端插件是在进程启动时扫描载入的。
 
@@ -226,6 +233,20 @@ node --check lib/client.js     # 语法自检
 - AI 心情默认只在**一轮任务结束时**判断一次；要更灵敏就在面板里把「时机」切成「每条回复」（受 20 秒节流）。两者都不是逐 token 实时变化。
 - 面板里暂未做颜色自定义（引擎支持任意 `color` / `eyeColor`，见 `Util.themeColors`）。
 - 仍在使用 `ReactDOM.render`（React 18 的 legacy 入口）。换成 `createRoot` 需要在 `package.json` 的 `dsh.client.external` 里声明 `react-dom` 才能 `require("react-dom/client")`，暂未改动。
+
+## 🔌 作为 dsh Web 社区插件
+
+本仓库按 dsh 社区客户端插件的通用形态组织，可以直接被别人 `dsh plugin add` 安装：
+
+| 约定 | 本仓库的做法 |
+| --- | --- |
+| `package.json` 的 `dsh.bundle.patch` | 指向 `cordis.patch.yml`，安装后自动把插件行插入 web 花名册 |
+| `package.json` 的 `dsh.client` | `platform: "web"` + `inject` 官方客户端包；`./client` 导出预构建 bundle |
+| 宿主半 | `lib/index.js`，只用 node 内建模块，零运行依赖 |
+| 浏览器半 | `lib/client.js`，一个 `window.__ModuleLoader__` 工厂，`apply(ctx)` 里 `inject = ["slots","connection","sessions"]` |
+| 占用的槽位 | `shell.overlay`（悬浮球本体）、`sidebar.footer.action`（设置入口） |
+| 占用的 RPC 通道 | 独立的 `/float-ball-rpc`（不抢其他插件共享的 `/rpc`） |
+| 许可证 | MIT（引擎 MIT，带原始 `LICENSE.grok-ball`） |
 
 ## 📄 许可
 
