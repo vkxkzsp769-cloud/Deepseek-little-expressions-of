@@ -24,10 +24,10 @@
 
 ```sh
 # 方式一：直接从 GitHub 安装（推荐）
-dsh plugin --profile web add git+https://github.com/<你的用户名>/dsh-float-ball.git
+dsh plugin --profile web add git+https://github.com/vkxkzsp769-cloud/dsh-float-ball.git
 
 # 方式二：克隆后本地安装
-git clone https://github.com/<你的用户名>/dsh-float-ball.git
+git clone https://github.com/vkxkzsp769-cloud/dsh-float-ball.git
 dsh plugin --profile web add ./dsh-float-ball
 
 # 方式三：本地打包安装（仓库里已有预构建产物，clone 后无需编译）
