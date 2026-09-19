@@ -1,0 +1,5 @@
+# dsh-client-ui-float-ball bundle patch：把本插件的行插入 web 花名册。
+# 安装方式：dsh plugin --profile web add <tgz 或目录>
+- insert:
+    - id: ui-float-ball
+      name: '@dsh-local/dsh-client-ui-float-ball'
