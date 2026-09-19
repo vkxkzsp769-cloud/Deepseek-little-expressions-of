@@ -59,7 +59,7 @@ const wire =
   ` +
   `module.exports.__gazeVector = typeof gazeVector === "function" ? gazeVector : null;
   ` +
-  `module.exports.__speech = typeof speechState === "function" ? { state: speechState, reset: resetSpeechThrottle } : null;\n` +
+  `module.exports.__speech = typeof speechState === "function" ? { state: speechState, reset: resetSpeechThrottle, quality: speechQuality } : null;\n` +
   `/* 调试钩子：仅用于构建机上的 jsdom 冒烟测试 */\n` +
   `window.__dshFloatBall = { panelState: typeof panelState !== "undefined" ? panelState : null, openPanel: typeof openPanel !== "undefined" ? openPanel : null, uiStore: uiStore, Engine: Engine };\n`;
 

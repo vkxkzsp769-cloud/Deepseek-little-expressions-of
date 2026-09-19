@@ -151,6 +151,11 @@ function apply(ctx) {
     /* 把观察器状态挂在导出对象上：构建机上的 jsdom 冒烟测试会读它来
      * 验证节流行为（线上没有任何副作用）。 */
     module.exports.__observer = observer.state;
+  /* 构建机冒烟测试入口：按指定表情说一句（等价于心情刚切到该表情）。
+   * speakNow 是组件内部函数，必须走 FloatBallActions 这个动作槽。 */
+  module.exports.__dshFloatBallInternalSay = function (moodId) {
+    if (FloatBallActions && typeof FloatBallActions.sayFor === "function") FloatBallActions.sayFor(moodId);
+  };
     var stop = observer.start();
     return function () { stop(); };
   }, "dsh-float-ball: agent observer + brain");

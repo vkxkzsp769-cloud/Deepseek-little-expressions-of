@@ -11,6 +11,11 @@
 function ballEngine() { return Util.Engine; }
 
 /** 归一化表情列表：{ id, group, name, color }[] */
+/** 高精度时间戳，带 performance 兜底。 */
+function now() {
+  return typeof performance !== "undefined" && performance.now ? performance.now() : Date.now();
+}
+
 function emotionList(engine) {
   var raw = (engine && engine.EMOTIONS) || [];
   var out = [];
@@ -67,7 +72,8 @@ var FloatBallActions = {
   selectEmotion: null,
   resetPos: null,
   placeAt: null,
-  open: null
+  open: null,
+  sayFor: null
 };
 
 /* ============================== 注视跟随 ============================== */
@@ -82,16 +88,21 @@ function useGaze(ref, enabled, dragging) {
   react.useEffect(
     function () {
       if (typeof window === "undefined") return undefined;
+      var cachedAt = 0;
 
       function measure() {
         var el = ref.current;
         if (!el) return;
         var r = el.getBoundingClientRect();
         ctrl.current = { x: r.left, y: r.top, w: r.width, h: r.height };
+        cachedAt = now();
       }
 
       function onMove(e) {
         if (!enabled || dragging || !e) return;
+        /* 球可能刚被拖动 / 页面刚滚动过：最多每 250ms 校正一次自己的矩形。
+         * 早期版本用 500ms 定时轮询，即使鼠标不动也白读一次布局，已去掉。 */
+        if (!cachedAt || now() - cachedAt > 250) measure();
         var c = ctrl.current;
         if (!c.w || !c.h) return;
         var el = ref.current;
@@ -110,17 +121,16 @@ function useGaze(ref, enabled, dragging) {
         if (ball && ball.clearGaze) ball.clearGaze();
       }
 
-      /* 球在拖动 / 滚动后会移动，定时重测比单纯事件驱动更可靠 */
       measure();
-      var timer = window.setInterval(measure, 500);
       window.addEventListener("pointermove", onMove, { passive: true });
       window.addEventListener("resize", measure);
+      window.addEventListener("scroll", measure, true);
       document.addEventListener("pointerleave", onLeave);
 
       return function () {
-        window.clearInterval(timer);
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("resize", measure);
+        window.removeEventListener("scroll", measure, true);
         document.removeEventListener("pointerleave", onLeave);
       };
     },
@@ -145,6 +155,17 @@ var BUBBLE_MAX_W = 230;
 var BUBBLE_TYPE_MS = 45;
 var BUBBLE_MIN_MS = 4200;
 var BUBBLE_MAX_MS = 11000;
+
+/** 心情 -> 气泡色调：让「开心」和「失落」看起来就不一样。 */
+function bubbleTone(moodId) {
+  var id = String(moodId || "").trim();
+  if (/^\d$/.test(id)) id = "0" + id;      /* 数字 12 也要认，别掉进 plain */
+  if (id === "10" || id === "19" || id === "33" || id === "14" || id === "13") return "warm";
+  if (id === "12" || id === "15" || id === "18" || id === "21") return "blue";
+  if (id === "17" || id === "34" || id === "38") return "alert";
+  if (id === "30" || id === "16" || id === "32" || id === "40" || id === "31" || id === "37") return "work";
+  return "plain";
+}
 
 function Bubble(props) {
   var anchorRef = props.anchorRef;
@@ -224,6 +245,8 @@ function Bubble(props) {
     ref: boxRef,
     className: "dfb-bubble",
     "data-kind": props.source || "local",
+    /* 按情绪给气泡换个观感：暖色心情 / 冷色低落 / 工作安静 / 慌张急促 */
+    "data-tone": bubbleTone(props.mood),
     role: "status",
     "aria-live": "polite",
     title: "点一下收起",
@@ -317,11 +340,7 @@ function FloatBall() {
         host.__dfbEngine = inst;
         if (inst.on) {
           inst.on("change", function (ev) {
-            if (ev && ev.id) {
-              uiStore.set({ live: ev.id });
-              /* 镜像一份给“说话”用：气泡内容要与屏幕上此刻的表情一致 */
-              window.__dfbShownEmotion = ev.id;
-            }
+            if (ev && ev.id) uiStore.set({ live: ev.id });
           });
         }
         uiStore.set({ live: inst.emotionId || cfg.emotion, ready: true });
@@ -377,9 +396,11 @@ function FloatBall() {
       uiStore.set({ mood: wanted });
       ball.setEmotion(wanted || cfg.emotion);
       if (ball.resetIdle) ball.resetIdle();
-      /* 心情换了就说一句（sayNow 自带 20 秒节流，不会喋喋不休） */
+      /* 心情换了就说一句（sayNow 自带 20 秒节流，不会喋喋不休）。
+       * 这里必须把「想要的表情」直接传下去：引擎的 setEmotion 是渐变的，
+       * 立刻回读 emotionId 还会是旧表情，台词就会说错情绪。 */
       if (wanted && wanted !== prevMood) {
-        speakNow(wanted, ui.brain && ui.brain.reason, false);
+        speakNow(wanted, ui.brain && ui.brain.reason, false, true);
       }
     },
     [ui.running, ui.mood, ui.taskMood, cfg.auto, cfg.anim, cfg.brain, ui.brain && ui.brain.id, cfg.emotion]
@@ -531,7 +552,7 @@ function FloatBall() {
     }, HOLD_MS);
   }
 
-  /* ---- 手势：拖动定位 / 单击自旋 / 长按开面板 / 右键与双击开面板 ---- */
+  /* ---- 手势：拖动定位 / 单击自旋 / 长按开面板（鼠标也可以右键） ---- */
   function onPointerDown(e) {
     if (e.button !== undefined && e.button !== 0 && e.pointerType !== "touch") return;
     var el = ref.current;
@@ -613,18 +634,22 @@ function FloatBall() {
     speakNow(uiStore.get().live || cfg.emotion, "", true);
   }
 
-  /** 说一句：由 18-speech.js 决定走模型还是本地台词。 */
-  function speakNow(moodId, reason, force) {
+  /**
+   * 说一句：由 18-speech.js 决定走模型还是本地台词。
+   * @param moodId 目标表情（心情切换时传「想要的」，点击互动时传引擎当前值）
+   * @param authoritative 为真表示 moodId 就是权威情绪，不要用引擎回读覆盖
+   */
+  function speakNow(moodId, reason, force, authoritative) {
     var engineNow = ballEngine();
     var list = emotionList(engineNow);
     var found = findEmotion(list, moodId);
     var brain = uiStore.get().brain || {};
     var context = brain.context || {};
     if (currentCfg().bubble === false) return;
-    /* 本地台词的兜底要与「发出这句话时屏幕上显示的表情」一致：等模型回来时表情
-     * 可能已经换了（例如收尾表情），所以在这里就把当前表情快照下来传下去。 */
+    /* 本地台词的兜底要与「发这句话时的表情」一致：非权威场景（点击互动）用引擎
+     * 当前值；权威场景（心情刚切到 12）直接用目标值，避免回读到旧表情。 */
     var el = ref.current;
-    var shownNow = el && el.__dfbEngine ? el.__dfbEngine.emotionId : "";
+    var shownNow = authoritative ? "" : (el && el.__dfbEngine ? el.__dfbEngine.emotionId : "");
     sayNow({
       mood: shownNow || moodId,
       moodName: found ? found.name : "",
@@ -707,11 +732,16 @@ function FloatBall() {
     FloatBallActions.resetPos = resetPos;
     FloatBallActions.placeAt = placeAt;
     FloatBallActions.open = function () { openPanel(ref.current); };
+    /* 仅供构建机冒烟测试：按指定表情说一句 */
+    FloatBallActions.sayFor = function (moodId) {
+      speakNow(String(moodId), "", true, true);
+    };
     return function () {
       FloatBallActions.selectEmotion = null;
       FloatBallActions.resetPos = null;
       FloatBallActions.placeAt = null;
       FloatBallActions.open = null;
+      FloatBallActions.sayFor = null;
     };
   });
 
@@ -749,8 +779,9 @@ function FloatBall() {
         onPointerUp: endDrag,
         onPointerCancel: endDrag,
         onLostPointerCapture: endDrag,
+        /* 开面板：长按（触屏/鼠标）、右键（鼠标）、侧边栏「表情球」。
+         * 双击原本也开面板，但和单击自旋容易互相打架，已去掉。 */
         onContextMenu: function (e) { e.preventDefault(); openPanel(ref.current); },
-        onDoubleClick: function (e) { e.preventDefault(); openPanel(ref.current); },
         onClick: onClick,
         onKeyDown: onKeyDown,
         children: jsx("div", {
@@ -765,6 +796,8 @@ function FloatBall() {
             anchorRef: ref,
             text: ui.say.text || "",
             source: ui.say.source || "local",
+            mood: ui.say.mood || "",
+            moodName: ui.say.moodName || "",
             onDone: function () { uiStore.set({ say: null }); }
           })
         : null

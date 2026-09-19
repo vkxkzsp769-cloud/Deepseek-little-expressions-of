@@ -33,6 +33,11 @@ var CSS = [
   ".dfb-bubble[data-side=\"bottom\"]::after{top:-6px;transform:rotate(225deg);}",
   ".dfb-bubble[data-side=\"none\"]::after{display:none;}",
   ".dfb-bubble[data-kind=\"model\"]{border-color:rgb(56 189 248 / .45);}",
+  /* 情绪色调：同一套气泡，心情不同观感不同 */
+  ".dfb-bubble[data-tone=\"warm\"]{border-color:rgb(251 191 36 / .55);background:rgb(48 40 26 / .97);}",
+  ".dfb-bubble[data-tone=\"blue\"]{border-color:rgb(125 145 175 / .5);background:rgb(26 30 38 / .97);opacity:.94;}",
+  ".dfb-bubble[data-tone=\"alert\"]{border-color:rgb(248 113 113 / .55);}",
+  ".dfb-bubble[data-tone=\"work\"]{border-color:rgb(148 163 184 / .38);}",
   ".dfb-bubble[data-kind=\"local-fallback\"]{opacity:.92;}",
   "@keyframes dfb-say-in{from{opacity:0;transform:translateY(6px) scale(.94);}to{opacity:1;transform:none;}}",
 
