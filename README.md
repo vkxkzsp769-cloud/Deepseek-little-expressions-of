@@ -241,6 +241,13 @@ node --check lib/client.js     # 语法自检
 - 面板里暂未做颜色自定义（引擎支持任意 `color` / `eyeColor`，见 `Util.themeColors`）。
 - 仍在使用 `ReactDOM.render`（React 18 的 legacy 入口）。换成 `createRoot` 需要在 `package.json` 的 `dsh.client.external` 里声明 `react-dom` 才能 `require("react-dom/client")`，暂未改动。
 
+## 🏷️ 标签（便于社区列表收录）
+
+`dsh` · `dsh-plugin` · `dsh-web` · `deepseek-harness` · `desktop-pet` · `emotion-ball` · `grok-ball` · `floating-widget`
+
+> 建议在 GitHub 仓库的 **Topics** 里填上上面这些词，[bruc3van/awesome-dsh-plugin](https://github.com/bruc3van/awesome-dsh-plugin)
+> 与 [awesome-dsh-hub](https://github.com/ukinch605/awesome-dsh-hub) 会按 `dsh-plugin` 标签自动抓取。
+
 ## 🔌 作为 dsh Web 社区插件
 
 本仓库按 dsh 社区客户端插件的通用形态组织，可以直接被别人 `dsh plugin add` 安装：
