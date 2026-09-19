@@ -109,7 +109,13 @@ function speechAllowed(force) {
   return true;
 }
 
-/** 上屏：写进 store，气泡组件负责展示与计时。 */
+/** 队列上限：再多就直接丢掉，免得攒一堆过期的话。 */
+var SAY_QUEUE_MAX = 2;
+
+/**
+ * 上屏：写进 store，气泡组件负责展示与计时。
+ * 已经在显示一条时，新话进入 pending 排队 —— 不打断、也不丢失。
+ */
 function showSpeech(text, source, mood, moodName) {
   if (!text) return;
   speechStreak = mood && mood === speechLastMood ? speechStreak + 1 : 1;
@@ -118,10 +124,32 @@ function showSpeech(text, source, mood, moodName) {
   speechLastAt = Date.now();
   speechHistory.push(text);
   if (speechHistory.length > SAY_HISTORY) speechHistory.shift();
-  /* mood / moodName 一并记下来：气泡按情绪换样式，测试与排查也要看这个 */
-  uiStore.set({
-    say: { text: text, at: Date.now(), source: source || "local", mood: mood || "", moodName: moodName || "" }
-  });
+
+  var entry = {
+    text: text,
+    at: Date.now(),
+    source: source || "local",
+    mood: mood || "",
+    moodName: moodName || ""
+  };
+  var state = uiStore.get();
+  if (!state.say) {
+    uiStore.set({ say: entry });
+    return;
+  }
+  /* 正在说：排队，等它读完再上（同一条不重复排） */
+  var pending = (state.pending || []).filter(function (item) { return item.text !== text; });
+  pending.push(entry);
+  while (pending.length > SAY_QUEUE_MAX) pending.shift();
+  uiStore.set({ pending: pending });
+}
+
+/** 当前这条展示完了：把排队的下一条推上来。 */
+function advanceSpeech() {
+  var state = uiStore.get();
+  var pending = (state.pending || []).slice();
+  var next = pending.shift() || null;
+  uiStore.set({ say: next, pending: pending });
 }
 
 function recentSpeech() {
@@ -149,7 +177,11 @@ function resetSpeechThrottle() {
 function sayNow(opts) {
   var options = opts || {};
   var cfg = uiStore.get().cfg || {};
-  if (cfg.bubble === false) return Promise.resolve(null);
+  if (cfg.bubble === false) {
+    /* 关掉气泡时把队列清干净，别让旧话在开关重新打开后突然冒出来 */
+    uiStore.set({ say: null, pending: [] });
+    return Promise.resolve(null);
+  }
   if (!speechAllowed(options.force)) return Promise.resolve(null);
 
   /* 本地台词先上屏，模型回来再替换（也有“先说一句”的手感） */

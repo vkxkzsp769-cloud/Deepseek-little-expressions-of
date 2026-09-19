@@ -89,8 +89,12 @@ var DEFAULT_UI = {
   model: null,
   /* task：跑任务时小动作用的临时表情（与 mood 分开，免得和大脑的心情打架） */
   taskMood: null,
-  /* say：气泡当前要说的话 { text, at, source }；sayBusy 表示正在等模型 */
+  /* say：气泡当前要说的话 { text, at, source, mood }
+   * pending：排队等展示的话（最多 2 条）——**新话不会打断正在显示的那条**，
+   *          等当前这条读完了再上，避免「来不及看完就被顶掉」。
+   * sayBusy：正在等模型返回 */
   say: null,
+  pending: [],
   sayBusy: false,
   /* sessions：会话服务句柄（供 25-brain.js 复用，避免每处都注入一遍） */
   sessions: null,

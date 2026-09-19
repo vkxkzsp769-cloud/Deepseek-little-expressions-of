@@ -243,9 +243,10 @@ function startLifeLoop(hostRef, isRunning) {
     }
   }
 
+  /** 一次心跳；只有关掉小动作就什么都不做（测试也可能直接调它）。 */
   function tick() {
     timer = 0;
-    if (!alive()) { schedule(); return; }
+    if (!alive() || currentCfg().anim === false) { schedule(); return; }
     act(pick(WORK_ACTIONS));
     var ball = engine();
     if (ball && ball.resetIdle) ball.resetIdle();

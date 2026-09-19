@@ -152,9 +152,14 @@ var RELIEF_MS = 1400;
  */
 var BUBBLE_GAP = 10;
 var BUBBLE_MAX_W = 230;
-var BUBBLE_TYPE_MS = 45;
-var BUBBLE_MIN_MS = 4200;
-var BUBBLE_MAX_MS = 11000;
+var BUBBLE_TYPE_MS = 42;
+/* 停留时长 = 打字时间 + 读数时间：读数按剩余字数 × 65ms，最少 2.6 秒、最多 9 秒。
+ * 点一下可以再多留 5 秒慢慢看（不再需要「点掉」它）。 */
+var BUBBLE_TYPE_LEAD_MS = 600;
+var BUBBLE_READ_PER_CHAR_MS = 65;
+var BUBBLE_READ_MIN_MS = 2600;
+var BUBBLE_READ_MAX_MS = 9000;
+var BUBBLE_LINGER_MS = 5000;
 
 /** 心情 -> 气泡色调：让「开心」和「失落」看起来就不一样。 */
 function bubbleTone(moodId) {
@@ -172,6 +177,8 @@ function Bubble(props) {
   var text = props.text || "";
   var boxRef = react.useRef(null);
   var [shown, setShown] = react.useState("");
+  /* 每点一次多留 5 秒；不重置打字动画，也不清掉已显示的文字 */
+  var [extraMs, setExtraMs] = react.useState(0);
 
   /* ---- 逐字说出 ---- */
   react.useEffect(function () {
@@ -233,13 +240,14 @@ function Bubble(props) {
     };
   }, [anchorRef, text]);
 
-  /* ---- 自动收起：按字数给 4.2-11 秒 ---- */
+  /* ---- 停留时长 = 打字 + 读数 + 用户点的续时（点一次 +5 秒） ---- */
   react.useEffect(function () {
     if (!text || !props.onDone) return undefined;
-    var life = clampNum(BUBBLE_MIN_MS + text.length * 130, BUBBLE_MIN_MS, BUBBLE_MAX_MS);
-    var timer = setTimeout(function () { props.onDone(); }, life);
+    var typing = BUBBLE_TYPE_LEAD_MS + text.length * BUBBLE_TYPE_MS;
+    var reading = clampNum(text.length * BUBBLE_READ_PER_CHAR_MS, BUBBLE_READ_MIN_MS, BUBBLE_READ_MAX_MS);
+    var timer = setTimeout(function () { props.onDone(); }, typing + reading + extraMs);
     return function () { clearTimeout(timer); };
-  }, [text, props.onDone]);
+  }, [text, props.onDone, extraMs]);
 
   return jsx("div", {
     ref: boxRef,
@@ -249,8 +257,11 @@ function Bubble(props) {
     "data-tone": bubbleTone(props.mood),
     role: "status",
     "aria-live": "polite",
-    title: "点一下收起",
-    onClick: function () { if (props.onDone) props.onDone(); },
+    title: extraMs > 0 ? "已多留 " + Math.round(extraMs / 1000) + " 秒（再点还能加）" : "点一下让它多留 5 秒",
+    onClick: function () {
+      /* 点一下是「我还没看完」：续时，而不是把话点掉 */
+      setExtraMs(function (prev) { return prev + BUBBLE_LINGER_MS; });
+    },
     children: shown
   });
 }
@@ -330,8 +341,13 @@ function FloatBall() {
       var colors = themeColors(cfg.theme);
       var inst = null;
       try {
+        /* 重建引擎时不要直接落在「用户偏好」表情上：如果此刻正在跑任务或有
+         * 大脑心情，应该直接以那个表情起步，否则会先闪一下待机再切回去。 */
+        var stateNow = uiStore.get();
+        var startEmotion = stateNow.mood
+          || (cfg.auto !== false && stateNow.running ? AUTO_RUNNING_EMOTION : cfg.emotion);
         inst = ballEngine().create(node, {
-          emotion: cfg.emotion,
+          emotion: startEmotion,
           color: colors.color,
           eyeColor: colors.eyeColor,
           idle: cfg.idle === false ? false : undefined,
@@ -798,7 +814,8 @@ function FloatBall() {
             source: ui.say.source || "local",
             mood: ui.say.mood || "",
             moodName: ui.say.moodName || "",
-            onDone: function () { uiStore.set({ say: null }); }
+            /* 读完了就换下一条排队的（没有排队则收起气泡） */
+            onDone: function () { advanceSpeech(); }
           })
         : null
     ]
