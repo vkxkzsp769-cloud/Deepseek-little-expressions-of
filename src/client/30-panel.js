@@ -160,6 +160,14 @@ function PanelContent(props) {
     });
   }
 
+  /** 面板里显示的「现在是什么时段」。 */
+  function pricingNowLabel() {
+    var st = pricingState();
+    if (!st) return "读取中…";
+    var tier = st.tier === "peak" ? "高峰时段" : "空闲时段（半价）";
+    return tier + " · " + st.hhmm + (st.until ? " · " + st.until : "");
+  }
+
   /** 表情 ID -> 中文名（面板里展示 AI 读出的心情）。 */
   function moodLabel(id) {
     var found = findEmotion(list, id);
@@ -284,6 +292,74 @@ function PanelContent(props) {
           ],
           "跑任务期间要不要有些小动作"
         ),
+        toggleRow(
+          "时段",
+          [
+            {
+              label: "开始会话时报时段",
+              on: cfg.pricing !== false,
+              title: "每次你开口（以及打开页面）都告诉你现在是高峰还是空闲时段、当前价格多少。空闲时段是高峰的半价",
+              act: function () { panelPatch({ pricing: true }); refreshPricing(); }
+            },
+            {
+              label: "不报",
+              on: cfg.pricing === false,
+              title: "不播报时段与价格",
+              act: function () { panelPatch({ pricing: false }); }
+            }
+          ],
+          "要不要每次会话开始时播报「高峰 / 空闲时段」与价格"
+        ),
+        cfg.pricing !== false
+          ? jsxs("div", {
+              className: "dfb-row",
+              title: "自动判定 = 工作日 9-12 点、14-18 点为高峰（北京时间）；周末与节假日全天空闲",
+              children: [
+                jsx("label", { children: "判定" }),
+                jsxs("div", {
+                  className: "dfb-grid",
+                  children: [
+                    jsx("button", {
+                      type: "button",
+                      className: "dfb-chip",
+                      "data-on": cfg.pricingMode === "auto" ? "1" : undefined,
+                      onClick: function () { panelPatch({ pricingMode: "auto" }); refreshPricing(); },
+                      children: "自动"
+                    }),
+                    jsx("button", {
+                      type: "button",
+                      className: "dfb-chip",
+                      "data-on": cfg.pricingMode === "peak" ? "1" : undefined,
+                      title: "手动按高峰算（节假日可这样校准）",
+                      onClick: function () { panelPatch({ pricingMode: "peak" }); refreshPricing(); },
+                      children: "按高峰"
+                    }),
+                    jsx("button", {
+                      type: "button",
+                      className: "dfb-chip",
+                      "data-on": cfg.pricingMode === "offpeak" ? "1" : undefined,
+                      title: "手动按空闲算",
+                      onClick: function () { panelPatch({ pricingMode: "offpeak" }); refreshPricing(); },
+                      children: "按空闲"
+                    })
+                  ]
+                })
+              ]
+            })
+          : null,
+        cfg.pricing !== false
+          ? jsxs("div", {
+              className: "dfb-row",
+              children: [
+                jsx("label", { children: "现在" }),
+                jsx("div", {
+                  className: "dfb-model",
+                  title: "空闲价 = 高峰价的一半（DeepSeek 开放平台）",
+                  children: pricingNowLabel()
+                })
+              ]
+            })
+          : null,
         toggleRow(
           "说话",
           [

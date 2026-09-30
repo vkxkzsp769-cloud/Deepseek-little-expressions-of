@@ -73,7 +73,8 @@ var FloatBallActions = {
   resetPos: null,
   placeAt: null,
   open: null,
-  sayFor: null
+  sayFor: null,
+  sayText: null
 };
 
 /* ============================== 注视跟随 ============================== */
@@ -185,11 +186,13 @@ function Bubble(props) {
     setShown("");
     if (!text) return undefined;
     var i = 0;
+    /* 长句子（比如时段播报）打字快一点，别让「打字」本身占掉一半停留时间 */
+    var speed = text.length > 30 ? Math.round(BUBBLE_TYPE_MS * 0.6) : BUBBLE_TYPE_MS;
     var timer = setInterval(function () {
       i++;
       setShown(text.slice(0, i));
       if (i >= text.length) clearInterval(timer);
-    }, BUBBLE_TYPE_MS);
+    }, speed);
     return function () { clearInterval(timer); };
   }, [text]);
 
@@ -522,7 +525,7 @@ function FloatBall() {
       }, 600);
       return undefined;
     },
-    [cfg.emotion, cfg.size, cfg.theme, cfg.gaze, cfg.idle, cfg.auto, cfg.anim, cfg.bubble, cfg.sayLocal, cfg.brain, cfg.brainOn, cfg.brainProvider, cfg.brainModel, cfg.seenHint]
+    [cfg.emotion, cfg.size, cfg.theme, cfg.gaze, cfg.idle, cfg.auto, cfg.anim, cfg.bubble, cfg.sayLocal, cfg.pricing, cfg.pricingMode, cfg.brain, cfg.brainOn, cfg.brainProvider, cfg.brainModel, cfg.seenHint]
   );
 
   /* ---- 首次提示：一次性气泡，几秒后自动消失并记忆 ---- */
@@ -748,7 +751,17 @@ function FloatBall() {
     FloatBallActions.resetPos = resetPos;
     FloatBallActions.placeAt = placeAt;
     FloatBallActions.open = function () { openPanel(ref.current); };
-    /* 仅供构建机冒烟测试：按指定表情说一句 */
+    /**
+     * 直接说一句指定的内容（时段播报等固定文案用它）。
+     * 不走模型、不查台词库：内容必须准，也不能花 token。
+     */
+    FloatBallActions.sayText = function (moodId, text) {
+      if (!text) return;
+      if (currentCfg().bubble === false) return;
+      showSpeech(text, "pricing", String(moodId || ""), "");
+    };
+
+    /* 按指定表情说一句（走模型/台词库） */
     FloatBallActions.sayFor = function (moodId) {
       speakNow(String(moodId), "", true, true);
     };
@@ -758,6 +771,7 @@ function FloatBall() {
       FloatBallActions.placeAt = null;
       FloatBallActions.open = null;
       FloatBallActions.sayFor = null;
+      FloatBallActions.sayText = null;
     };
   });
 

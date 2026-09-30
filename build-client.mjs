@@ -36,7 +36,7 @@ const engineModule =
   `});\n`;
 
 /* ---- 2) 主模块：src/client/*.js 按文件名顺序拼接 ---------------------- */
-const parts = ['10-util.js', '15-style.js', '18-speech.js', '24-life.js', '20-ball.js', '25-brain.js', '30-panel.js', '90-main.js'];
+const parts = ['10-util.js', '15-style.js', '18-speech.js', '22-pricing.js', '24-life.js', '20-ball.js', '25-brain.js', '30-panel.js', '90-main.js'];
 const body = parts
   .map((file) => {
     const src = read(join('src/client', file));
@@ -59,7 +59,9 @@ const wire =
   ` +
   `module.exports.__gazeVector = typeof gazeVector === "function" ? gazeVector : null;
   ` +
-  `module.exports.__speech = typeof speechState === "function" ? { state: speechState, reset: resetSpeechThrottle, quality: speechQuality } : null;\n` +
+  `module.exports.__speech = typeof speechState === "function" ? { state: speechState, reset: resetSpeechThrottle, quality: speechQuality } : null;
+  ` +
+  `module.exports.__pricing = typeof pricingState === "function" ? { state: pricingState, tier: computePricingTier, announce: announcePricing } : null;\n` +
   `/* 调试钩子：仅用于构建机上的 jsdom 冒烟测试 */\n` +
   `window.__dshFloatBall = { panelState: typeof panelState !== "undefined" ? panelState : null, openPanel: typeof openPanel !== "undefined" ? openPanel : null, uiStore: uiStore, Engine: Engine };\n`;
 

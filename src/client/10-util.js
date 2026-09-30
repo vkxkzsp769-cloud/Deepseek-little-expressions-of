@@ -59,6 +59,11 @@ var DEFAULT_CFG = {
   anim: true,
   /* bubble：聊天气泡（让它把情绪说出来） */
   bubble: true,
+  /* pricing：每次开始会话时播报当前是高峰还是空闲时段（价格来自 DeepSeek 文档） */
+  pricing: true,
+  /* pricingMode：auto = 按北京时间自动判定（工作日 9-12、14-18 为高峰）；
+   * peak / offpeak = 手动强制；用于节假日或个人校准 */
+  pricingMode: "auto",
   /* sayLocal：只用本地台词库，不调用模型 */
   sayLocal: false,
   /* brainOn：触发时机
@@ -208,6 +213,8 @@ function mergeCfg(raw) {
     brain: src.brain !== false,
     anim: src.anim !== false,
     bubble: src.bubble !== false,
+    pricing: src.pricing !== false,
+    pricingMode: src.pricingMode === "peak" || src.pricingMode === "offpeak" ? src.pricingMode : "auto",
     sayLocal: src.sayLocal === true,
     brainOn: src.brainOn === "message" ? "message" : "task",
     brainProvider: typeof src.brainProvider === "string" ? src.brainProvider : "",

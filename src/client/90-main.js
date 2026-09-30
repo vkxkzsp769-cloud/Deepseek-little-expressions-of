@@ -148,6 +148,8 @@ function apply(ctx) {
     var sessions = ctx.get ? ctx.get("sessions") : ctx.sessions;
     bindServices({ ctx: ctx, sessions: sessions });
     var observer = createAgentObserver({ sessions: sessions, ctx: ctx });
+    /* 会话开始时的时段播报（高峰/空闲 + 价格） */
+    var stopPricing = startPricing({ sessions: sessions });
     /* 把观察器状态挂在导出对象上：构建机上的 jsdom 冒烟测试会读它来
      * 验证节流行为（线上没有任何副作用）。 */
     module.exports.__observer = observer.state;
@@ -157,7 +159,10 @@ function apply(ctx) {
     if (FloatBallActions && typeof FloatBallActions.sayFor === "function") FloatBallActions.sayFor(moodId);
   };
     var stop = observer.start();
-    return function () { stop(); };
+    return function () {
+      stop();
+      if (typeof stopPricing === "function") stopPricing();
+    };
   }, "dsh-float-ball: agent observer + brain");
 
   /* 悬浮球本体的座位：条目渲染 null，真正的球由 bootstrap 挂到 body 上，
