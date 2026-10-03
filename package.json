@@ -1,7 +1,7 @@
 {
   "name": "@dsh-local/dsh-client-ui-float-ball",
-  "version": "0.1.0",
-  "description": "悬浮在 dsh Web 界面上的 Grok Ball 表情球：可拖动、跟随鼠标、32 种表情，位置与设置自动记住",
+  "version": "0.2.0",
+  "description": "悬浮在 dsh Web 界面上的表情球：可拖动、跟随鼠标、32 种表情、AI 心情与气泡说话、时段播报（适配 dsh 0.2）",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

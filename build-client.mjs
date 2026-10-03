@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const PKG = '@dsh-local/dsh-client-ui-float-ball';
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 
 const read = (rel) => readFileSync(join(here, rel), 'utf8');
 const pad = (n) => String(n).padStart(2, '0');

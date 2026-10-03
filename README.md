@@ -265,6 +265,18 @@ cordis.patch.yml             profile patch：把插件行插入 web 花名册
 - 引擎以独立模块注册进客户端模块表（`<包名>/engine/grok-ball`），主工厂 `require` 它，避免把 12 万字符的数据层再复制一份。
 - **降级**：宿主 RPC 不可用时（通道没挂载 / 请求失败 / 超时），配置与位置自动落到 `localStorage`，功能完整，只是少了跨浏览器共享的配置文件。
 
+## 🧩 与 dsh 0.2（cordis 4）的适配说明
+
+宿主半在 `apply()` 里用 `ctx.inject(['webServer'], scoped)` 后**直接注册**
+`/float-ball-rpc` 前缀路由，鉴权复用 `scoped.connection.admit(req)`（Host/Origin 门禁 +
+浏览器会话 Cookie），线上协议与 Connection RPC 完全一致，客户端零改动。
+
+> 为什么不用 `connection.rpc.handle(channel)`：它内部在 **connection 服务自己的 ctx**
+> （inject 只有 `credentials`）上读 `webServer`，cordis 4 的严格 inject 校验会抛
+> `cannot get property "webServer" without inject`，第三方插件调用必挂（本插件 0.1.x 在
+> 0.2 上就是这样失效的——表现为 RPC 404/405、球退回本地台词）。官方同类写法见
+> `dsh-api-gateway`。修复已烘焙进包内，**重装/更新插件不会再丢**（不需要任何补丁脚本）。
+
 ## 🛠️ 开发
 
 ```sh
