@@ -201,9 +201,9 @@ function announcePricing(force) {
   return hostCall("float-ball/pricing", { model: (uiStore.get().model && uiStore.get().model.model) || "" }, 6000)
     .then(function (value) {
       var table = value && value.pricing ? value.pricing : null;
-      /* 时段以本地口径为准：宿主的 tier 只在显式要求时覆盖（见 pricingMode）。
-       * 两边口径不一致时（例如节假日），宁可跟用户看到的日历一致。 */
-      if (value && value.forceTier) info.tier = value.forceTier;
+      /* 时段一律以本地口径为准：宿主只提供价格表，不参与时段判定。
+       * 早期这里还读过一个 value.forceTier，但宿主 /float-ball/pricing 从不
+       * 返回该字段（永远 undefined），属于走不到的死分支，已删除。 */
       if (!table) table = FALLBACK_PRICING;
       return speak(table);
     }, function () {

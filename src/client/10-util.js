@@ -77,9 +77,11 @@ var DEFAULT_CFG = {
   seenHint: false
 };
 
-/* 代理工作状态 -> 表情（引擎的 emotionId 契约：30-49 为代理状态段） */
+/* 代理工作状态 -> 表情（引擎的 emotionId 契约：30-49 为代理状态段）。
+ * 注意：空闲态**没有**对应常量——空闲时应当回到用户手选的表情 cfg.emotion，
+ * 而不是固定回「待机放空」。早期这里有一个 AUTO_IDLE_EMOTION = "02"，被
+ * 20-ball.js 当成空闲兜底，结果用户手选的表情在刷新页面/任务结束后被覆盖。 */
 var AUTO_RUNNING_EMOTION = "30";
-var AUTO_IDLE_EMOTION = "02";
 
 /* store 字段：live 以引擎为真值、mood 记录自动表情、running 为会话运行状态 */
 var DEFAULT_UI = {
@@ -362,6 +364,5 @@ var Util = {
   hostCall: hostCall,
   pickRunning: pickRunning,
   setRunning: setRunning,
-  AUTO_RUNNING_EMOTION: AUTO_RUNNING_EMOTION,
-  AUTO_IDLE_EMOTION: AUTO_IDLE_EMOTION
+  AUTO_RUNNING_EMOTION: AUTO_RUNNING_EMOTION
 };

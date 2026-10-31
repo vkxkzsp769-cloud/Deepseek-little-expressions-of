@@ -27,7 +27,7 @@ var SAY_TEMPLATE_HINTS = [
   { re: /[`{}<>]|->|=>|\bJSON\b|\.js\b|\bAPI\b|\bID\b\s*[:=]/i, why: '看起来像代码而不是台词' }
 ];
 
-/** 与最近说过的话重复度：相同开头 2 字，或出现同样的 4 字短语。 */
+/** 与最近说过的话重复度：相同开头 2 字，或任意一个 4 字短语撞车。 */
 function repeatsRecent(text) {
   if (!text) return true;
   var head = text.slice(0, 2);
@@ -35,8 +35,10 @@ function repeatsRecent(text) {
     var old = speechHistory[i];
     if (!old) continue;
     if (old.slice(0, 2) === head) return true;
+    /* 早期版本这里的循环体是 `... && j === 0`，等价于「只比较开头 4 个字」，
+     * 整个 for 循环白转一圈。去掉那个条件后才是注释承诺的「4 字短语撞车」。 */
     for (var j = 0; j + 4 <= text.length; j++) {
-      if (old.indexOf(text.slice(j, j + 4)) >= 0 && j === 0) return true;
+      if (old.indexOf(text.slice(j, j + 4)) >= 0) return true;
     }
   }
   return false;

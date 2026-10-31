@@ -76,9 +76,8 @@ var CSS = [
   ".dfb-chip[data-on=\"1\"]{background:rgb(56 189 248 / .24);border-color:rgb(56 189 248 / .7);}",
   ".dfb-pos{min-width:38px;font-size:15px;line-height:1;padding:8px 0;text-align:center;}",
   ".dfb-model{flex:1 1 auto;font-size:11.5px;opacity:.8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}",
-  ".dfb-input{flex:1 1 0;min-width:0;font-family:inherit;font-size:11.5px;padding:6px 8px;border-radius:8px;",
-  "border:1px solid rgb(148 163 184 / .28);background:rgb(148 163 184 / .08);color:inherit;}",
-  ".dfb-input::placeholder{color:inherit;opacity:.4;}",
+  /* 早期面板有 provider/model 输入框（.dfb-input），现在改成「跟随当前会话的
+   * 模型」纯展示，那两条样式已无对应元素，删掉免得误以为还能配输入框。 */
   ".dfb-brain{font-size:11px;line-height:1.5;opacity:.72;margin:-2px 0 9px 2px;word-break:break-word;}",
   ".dfb-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;}",
   ".dfb-row>label{flex:0 0 46px;opacity:.66;font-size:11.5px;}",

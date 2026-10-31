@@ -162,6 +162,10 @@ var BUBBLE_READ_MIN_MS = 2600;
 var BUBBLE_READ_MAX_MS = 9000;
 var BUBBLE_LINGER_MS = 5000;
 
+/* 拖动结束后抑制浏览器补发的 click（见 endDrag / onClick）。
+ * 300ms 足够盖住 pointerup→click 的补发窗口，又短到不会误伤用户的快速点击。 */
+var CLICK_SUPPRESS_MS = 300;
+
 /** 心情 -> 气泡色调：让「开心」和「失落」看起来就不一样。 */
 function bubbleTone(moodId) {
   var id = String(moodId || "").trim();
@@ -286,6 +290,8 @@ function FloatBall() {
   var [hint, setHint] = react.useState(false);
   var posRef = react.useRef(pos);
   var rafId = react.useRef(0);
+  /* 拖动结束的时间戳：早于它到达的 click 是浏览器补发的，不当作单击互动 */
+  var suppressClickUntil = react.useRef(0);
 
   /**
    * 拖动期间直接改 DOM，不走 React：
@@ -323,15 +329,57 @@ function FloatBall() {
     });
   }
 
+  /**
+   * 初始位置与尺寸。尺寸的优先顺序：
+   *   位置记录里的 size（用户拖过球，顺手量到了当时的尺寸）
+   *   -> 配置里的 size（面板滑块 / 宿主配置文件）
+   *   -> 默认值。
+   * 早期版本漏掉了中间这一档，导致面板里的滑块只写配置、球的渲染尺寸
+   * 永远停在位置记录或默认值上（表现为「拖滑块没反应」）。
+   */
   function initialPos() {
     var pref = loadPosPref();
     var vp = viewport();
-    var size = pref.size || SIZE_DEFAULT;
+    var size = pref.size || normSize(currentCfg().size) || SIZE_DEFAULT;
     if (pref.x !== null && pref.y !== null) {
       return { x: pref.x * vp.w, y: pref.y * vp.h, size: size, custom: true };
     }
     return { x: vp.w - size - 26, y: vp.h - size - 26, size: size, custom: false };
   }
+
+  /* ---- 尺寸跟随配置 ----
+   * 面板滑块（以及宿主配置文件）改的是 cfg.size，球的渲染尺寸却是 pos.size。
+   * 两者必须单向同步：cfg.size 变化 -> 更新 pos.size，并把球夹回可视区域。
+   * 拖动结束时 pos.size 会写回配置（见 endDrag），所以这里不会打架。
+   *
+   * 首帧是例外：老版本从未把拖动尺寸写进配置，所以「位置记录里的 size」比
+   * cfg.size 更新（例如配置里还是 48，球实际被拖成 120）。首帧反过来以位置
+   * 记录为准、把 cfg.size 校正过来，避免升级后球突然缩回去。 */
+  var sizeSynced = react.useRef(false);
+  react.useEffect(
+    function () {
+      if (!sizeSynced.current) {
+        sizeSynced.current = true;
+        var prefSize = loadPosPref().size;
+        if (prefSize && prefSize !== normSize(cfg.size)) {
+          applyCfg(Object.assign({}, currentCfg(), { size: normSize(prefSize) }));
+        }
+        return;
+      }
+      var next = normSize(cfg.size);
+      setPos(function (prev) {
+        if (prev.size === next) return prev;
+        var vp = viewport();
+        return {
+          x: clampNum(prev.x, 0, Math.max(0, vp.w - next)),
+          y: clampNum(prev.y, 0, Math.max(0, vp.h - next)),
+          size: next,
+          custom: prev.custom
+        };
+      });
+    },
+    [cfg.size]
+  );
 
   /* ---- 挂载引擎：表情 / 主题 / 空闲行为变化时重建，保证内部状态干净 ---- */
   react.useEffect(
@@ -398,8 +446,11 @@ function FloatBall() {
       /* 优先级：
        *   跑任务中   -> 小动作挑的工作表情，默认「思考中」
        *   任务结束   -> AI 大脑判断的心情（若开启）
-       *   其余       -> 待机放空
-       */
+       *   其余       -> 用户自己手选的表情（cfg.emotion）
+       *
+       * 最后一档必须是 cfg.emotion，不能写死 AUTO_IDLE_EMOTION：写死会让
+       * 「页面刷新」和「任务跑完」都把用户手选的表情覆盖成「待机放空」，
+       * 与面板里「任务结束回到你选的表情」的说明相悖。 */
       var wanted = null;
       var brainId = ui.brain && ui.brain.id;
       if (ui.running) {
@@ -408,7 +459,7 @@ function FloatBall() {
       } else if (cfg.brain === true && brainId) {
         wanted = brainId;
       } else if (cfg.auto !== false) {
-        wanted = AUTO_IDLE_EMOTION;
+        wanted = cfg.emotion;
       }
       if (wanted === ui.mood) return;
       var prevMood = ui.mood;
@@ -477,8 +528,10 @@ function FloatBall() {
         var ball = el && el.__dfbEngine;
         var cfgNow = currentCfg();
         var brainId = uiStore.get().brain && uiStore.get().brain.id;
-        var back = cfgNow.brain === true && brainId ? brainId
-          : (cfgNow.auto !== false ? AUTO_IDLE_EMOTION : cfgNow.emotion);
+        /* 收尾动作之后回到：大脑判断的心情（若开启且有结果）-> 用户手选的表情。
+         * 这里也曾经写死 AUTO_IDLE_EMOTION（「待机放空」），与 mood 效果里
+         * 同一处 bug 成对出现：任务一结束就把用户挑的表情吃掉。 */
+        var back = cfgNow.brain === true && brainId ? brainId : cfgNow.emotion;
         if (ball && ball.setEmotion) ball.setEmotion(back);
       }, RELIEF_MS);
       return undefined;
@@ -633,16 +686,28 @@ function FloatBall() {
       window.cancelAnimationFrame(rafId.current);
       rafId.current = 0;
     }
+    /* 拖动结束后浏览器仍会补发一次 click：把它标记掉，否则每次拖完球都要
+     * 撒花 + 自旋 + 弹跳 + 说一句话（看起来像「手一松球就自己疯了」）。
+     * 用时间戳而不是布尔值：某些环境拖完不发 click，布尔值会把下一次
+     * 真正的点击吃掉。 */
+    suppressClickUntil.current = Date.now() + CLICK_SUPPRESS_MS;
     var final = posRef.current;
     applyPos(final, true);
     setDragging(false);
     /* 一次 state 同步：面板下次打开时按新位置摆放 */
     setPos({ x: final.x, y: final.y, size: final.size, custom: true });
+    /* 尺寸写回配置：拖动是用户量到真实尺寸的时机，不写回的话面板滑块会
+     * 显示旧值（显示 84、球实际 120），下次一点滑块就跳变。 */
+    if (final.size && final.size !== cfg.size) {
+      applyCfg(Object.assign({}, currentCfg(), { size: normSize(final.size) }));
+    }
     try { ref.current.releasePointerCapture(e.pointerId); } catch (err) { /* ignore */ }
   }
 
   /** 单击：撒花 + 自旋 + 弹跳，并把空闲计时归零；顺手回一句话。 */
   function onClick() {
+    /* 刚拖完球：这次 click 是浏览器补发的，不是用户想互动 */
+    if (Date.now() < suppressClickUntil.current) return;
     var el = ref.current;
     var ball = el && el.__dfbEngine;
     if (!ball) return;

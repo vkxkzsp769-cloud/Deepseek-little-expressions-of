@@ -193,16 +193,20 @@ function apply(ctx) {
 
 /* 客户端 apply 用到的 cordis 服务：
  *   ctx.slots     由 dsh-client-runtime 提供（槽位注册）
- *   ctx.connection 由 dsh-client-connection 提供（宿主 RPC 通道）
  *   ctx.sessions  由 dsh-api-session-controller 提供（会话 running 位，驱动“思考中”）
  * 未声明的服务一旦访问就会抛 “cannot get property ... without inject”，
- * 因此必须在这里声明。注意：声明即在服务缺失时阻止插件加载，所以只列必要项。 */
-var inject = ["slots", "connection", "sessions"];
+ * 因此必须在这里声明。注意：声明即在服务缺失时阻止插件加载，所以只列必要项。
+ *
+ * 刻意**不**声明 connection：宿主 RPC 走的是普通 fetch（见 10-util.js 的
+ * hostCall），客户端半从来不读 ctx.connection。多声明一个用不到的服务，
+ * 只会平白多一个“服务缺失就不加载插件”的失败点。 */
+var inject = ["slots", "sessions"];
 
 module.exports = {
   name: "dsh-client-ui-float-ball",
   NS: NS,
   apply: apply,
-  inject: inject,
-  version: "0.1.0"
+  inject: inject
+  /* version 由 build-client.mjs 统一写入（唯一真值来源是 package.json 的
+   * VERSION 常量），这里不再写死一份，免得两处不同步。 */
 };

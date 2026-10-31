@@ -21,8 +21,9 @@ dsh plugin --profile web add git+https://github.com/vkxkzsp769-cloud/Deepseek-li
 - **32 种表情 / 随时切换**：生命周期、情绪反应、代理工作状态三组，长按（触屏）或右键（鼠标）球打开面板即可切换；数字键 `1`–`9` 快速切换前 9 个表情。
 - **手机友好**：长按球打开面板（球本身禁用了文字选择与系统长按菜单，不会弹「复制」）；面板里有 5 个位置按钮，一键把球送到四角或屏幕正中，不必精确拖动。
 - **眼神跟随鼠标**：眼球以球心为原点实时追踪光标；指针离开窗口后自动回到正面。
-- **点击有反应**：单击球会撒花 + 自旋 + 弹跳。
+- **点击有反应**：单击球会撒花 + 自旋 + 弹跳（拖完松手不会误触发，见 0.2.1 变更）。
 - **会自动犯困**：默认 1 分钟无操作转「待机放空」，3 分钟进入「睡眠」（头顶 zzz）；可在面板里关掉，改成一直保持当前表情。
+- **尺寸可调**：面板滑块 48–160px 实时改变球大小并随配置保存（0.2.1 起真正生效）。
 - **设置自动记忆**：位置、尺寸、主题、表情、开关全部自动保存（位置存浏览器，配置同时写入 `$DSH_HOME/float-ball.json`）。
 - **不打扰操作**：叠加在界面最上层但只有球自己接收鼠标事件；提示气泡 6 秒后自动消失。
 - **零外部资源**：引擎（SVG 实时驱动）与样式全部内联，不请求任何字体 / 图片 / CDN。
@@ -39,7 +40,8 @@ dsh plugin --profile web add ./Deepseek-little-expressions-of
 
 # 方式三：本地打包安装（仓库里已有预构建产物，clone 后无需编译）
 npm pack
-dsh plugin --profile web add dsh-local-dsh-client-ui-float-ball-0.1.0.tgz
+dsh plugin --profile web add dsh-local-dsh-client-ui-float-ball-0.2.1.tgz
+# 版本号以 package.json 为准；生成的 tgz 已被 .gitignore 排除，不入库
 ```
 
 > 客户端 bundle（`lib/client.js`）已预构建并随仓库提交，装完**重启 `dsh web`** 即可，
@@ -287,6 +289,18 @@ node --check lib/client.js     # 语法自检
 改动 `src/client/*.js` 后必须重新 `node build-client.mjs`：浏览器只会加载 `lib/client.js`。
 
 `pnpm run dev:web` 的客户端 HMR 只对**已装载**的插件行生效；新增插件、改 `lib/index.js` 或 `cordis.patch.yml` 都必须重启 `dsh web`。
+
+## 🩹 变更记录
+
+### 0.2.1 — 三个交互 bug 修复
+
+| 问题 | 现象 | 原因 / 修法 |
+| --- | --- | --- |
+| 尺寸滑块无效 | 面板里拖「尺寸」滑块，球一点不变 | 滑块只写 `cfg.size`，而渲染尺寸取的是 `pos.size`，两者之间没有任何同步。现在加了一个 effect 把 `cfg.size` 单向同步到 `pos.size`（并把球夹回视口），拖动结束时也会把真实尺寸写回 `cfg.size`。 |
+| 手选表情被吃掉 | 刷新页面或任务跑完后，球总是回到「02 待机放空」，而不是你挑的表情 | `20-ball.js` 两处空闲兜底写死了 `AUTO_IDLE_EMOTION = "02"`。现在空闲时回到 `cfg.emotion`（大脑有结果时优先大脑）。 |
+| 拖完球就撒花 | 把球拖到新位置松手，会自己撒花 + 自旋 + 弹跳 + 说一句话 | `pointerup` 之后浏览器会补发 `click`，而 `onClick` 没有区分「拖动后的 click」。现在用时间戳抑制 300ms 内的补发 click。 |
+
+顺带清理（不影响行为）：客户端 `inject` 去掉从未使用的 `connection`；删掉写死的死版本号、无对应元素的 `.dfb-input` 样式、走不到的 `forceTier` 分支；修好永远只比较开头 4 个字的重复检测循环；删掉已无用的 `AUTO_IDLE_EMOTION` 常量。
 
 ## ⚠️ 已知限制 / 后续可做
 
