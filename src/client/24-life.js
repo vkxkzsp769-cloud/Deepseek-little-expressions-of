@@ -11,6 +11,26 @@
 
 /* 工作状态表情：跑任务时来回换（和 20-ball 的 TASK_WORK_EMOTIONS 一致） */
 var LIFE_WORK_EMOTIONS = ["32", "40", "31", "37"];
+
+/**
+ * 本轮该挑哪个工作表情。
+ *
+ * 关键改动：把「AI 判断出的心情」也放进池子里，并且给两倍权重。
+ * 否则会出现这种情况——AI 明明判断出用户很生气（21），但任务一跑就是几分钟，
+ * running 分支只认工作表情，用户在整个任务期间一张「生气脸」都看不到，
+ * 于是「AI 调用的表情很少」。这里让 AI 的结果渗透进工作动画。
+ */
+function pickWorkEmotion() {
+  var pool = LIFE_WORK_EMOTIONS.slice();
+  var brain = uiStore.get().brain;
+  var id = brain && brain.id;
+  /* AI 有结果时：两倍权重塞进池子，约 1/3 的节拍会显示 AI 的心情 */
+  if (id && LIFE_WORK_EMOTIONS.indexOf(id) < 0) {
+    pool.push(id);
+    pool.push(id);
+  }
+  return pick(pool);
+}
 var LIFE_FLASH_EMOTIONS = ["13", "16", "14"];
 var LIFE_EAGER_EMOTIONS = ["07", "19", "33"];
 
@@ -189,7 +209,7 @@ function startLifeLoop(hostRef, isRunning) {
     var ball = engine();
     if (!ball) return;
     if (action === "work") {
-      var work = pick(LIFE_WORK_EMOTIONS);
+      var work = pickWorkEmotion();
       if (work !== uiStore.get().taskMood) setMood(work);
     } else if (action === "flash") {
       /* 闪一下情绪再回来：节奏 1.6-2.6 秒，长短随机 */
@@ -198,7 +218,7 @@ function startLifeLoop(hostRef, isRunning) {
       flashTimer = setTimeout(function () {
         flashTimer = 0;
         if (!alive()) return;
-        setMood(pick(LIFE_WORK_EMOTIONS));
+        setMood(pickWorkEmotion());
       }, randomBetween(1600, 2600));
     } else if (action === "eager") {
       /* 兴致上来：连换两次，像“我来我来” */
@@ -207,7 +227,7 @@ function startLifeLoop(hostRef, isRunning) {
       flashTimer = setTimeout(function () {
         flashTimer = 0;
         if (!alive()) return;
-        setMood(pick(LIFE_WORK_EMOTIONS));
+        setMood(pickWorkEmotion());
       }, randomBetween(900, 1500));
     } else if (action === "shy") {
       setMood("14");
@@ -215,7 +235,7 @@ function startLifeLoop(hostRef, isRunning) {
       flashTimer = setTimeout(function () {
         flashTimer = 0;
         if (!alive()) return;
-        setMood(pick(LIFE_WORK_EMOTIONS));
+        setMood(pickWorkEmotion());
       }, randomBetween(1200, 2000));
     } else if (action === "bounce") {
       /* 轻弹 / 重弹：连续弹两下也有 */

@@ -421,16 +421,16 @@ function PanelContent(props) {
           "时机",
           [
             {
-              label: "每轮任务",
-              on: cfg.brainOn !== "message",
-              title: "整个任务跑完只判断一次（最省，30 分钟的任务通常就一次）",
-              act: function () { panelPatch({ brainOn: "task" }); }
+              label: "每条回复",
+              on: cfg.brainOn !== "task",
+              title: "每收到一条助手回复就判断一次，表情跟着对话走（推荐；最快 20 秒一次，单次开销很小）",
+              act: function () { panelPatch({ brainOn: "message" }); }
             },
             {
-              label: "每条回复",
-              on: cfg.brainOn === "message",
-              title: "每收到一条助手回复就判断一次（更灵敏，最快 20 秒一次）",
-              act: function () { panelPatch({ brainOn: "message" }); }
+              label: "每轮任务",
+              on: cfg.brainOn === "task",
+              title: "整个任务跑完只判断一次（最省，但任务跑着的几分钟里表情几乎不变）",
+              act: function () { panelPatch({ brainOn: "task" }); }
             }
             ],
             "多久问一次“用户现在什么心情”（两种模式都最快 20 秒一次）"
