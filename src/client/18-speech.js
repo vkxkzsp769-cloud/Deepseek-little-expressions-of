@@ -27,18 +27,31 @@ var SAY_TEMPLATE_HINTS = [
   { re: /[`{}<>]|->|=>|\bJSON\b|\.js\b|\bAPI\b|\bID\b\s*[:=]/i, why: '看起来像代码而不是台词' }
 ];
 
-/** 与最近说过的话重复度：相同开头 2 字，或任意一个 4 字短语撞车。 */
+/**
+ * 与最近说过的话重复度。
+ *
+ * 判定标准：只有「真的在说同一件事」才算重复——
+ *   - 整句相同；
+ *   - 或者与最近某句共享一个 ≥6 字的连续片段。
+ *
+ * **不再用「开头 2 字相同」判重**：实测这条规则误杀率 29%，模型很爱用
+ * 「嗯……」「那行……」「……我」这类自然停顿开头，两条不同的话经常撞头两字，
+ * 结果明明有情绪的台词被判废，立刻掉回本地固定台词库——这就是「说的话没感情」
+ * 的主要来源。开头撞车只在两句都很短（<10 字，几乎等于同一句模板）时才判重。
+ */
+var REPEAT_GRAM = 6;
+
 function repeatsRecent(text) {
   if (!text) return true;
-  var head = text.slice(0, 2);
   for (var i = 0; i < speechHistory.length; i++) {
     var old = speechHistory[i];
     if (!old) continue;
-    if (old.slice(0, 2) === head) return true;
-    /* 早期版本这里的循环体是 `... && j === 0`，等价于「只比较开头 4 个字」，
-     * 整个 for 循环白转一圈。去掉那个条件后才是注释承诺的「4 字短语撞车」。 */
-    for (var j = 0; j + 4 <= text.length; j++) {
-      if (old.indexOf(text.slice(j, j + 4)) >= 0) return true;
+    if (old === text) return true;
+    /* 短句只看开头（两句都短且开头一样，基本就是同一句模板） */
+    if (text.length < 10 && old.length < 10 && old.slice(0, 2) === text.slice(0, 2)) return true;
+    /* 长句看实质重叠：≥6 字连续片段撞车才算重复 */
+    for (var j = 0; j + REPEAT_GRAM <= text.length; j++) {
+      if (old.indexOf(text.slice(j, j + REPEAT_GRAM)) >= 0) return true;
     }
   }
   return false;
@@ -200,6 +213,9 @@ function sayNow(opts) {
     mood: options.mood || "",
     moodName: options.moodName || "",
     reason: options.reason || "",
+    /* activity：此刻在干什么（任务进行中那几句话靠它才有具体内容）。
+     * 没有它，running 时的 user/assistant 通常是空的，模型只好编或憋出半句。 */
+    activity: options.activity || "",
     user: options.user || "",
     assistant: options.assistant || "",
     recent: recentSpeech(),

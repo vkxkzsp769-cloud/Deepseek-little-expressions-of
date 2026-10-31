@@ -143,6 +143,29 @@ function useGaze(ref, enabled, dragging) {
  * 心率与动作都在 24-life.js 里，这里只负责在「会话在跑」期间开启它。
  */
 
+/* 工作表情 -> 一句「此刻在干什么」，喂给说话模块当上下文。
+ * 没有它，任务进行中的台词就没有具体内容可讲（模型只能憋出「哼」），
+ * 这是「说话没感情」的主要成因之一。 */
+var ACTIVITY_TEXT = {
+  "30": "正在思考接下来该怎么做",
+  "31": "刚接到任务，正在看要改哪些地方",
+  "32": "正在动手处理，活儿有点多",
+  "37": "正在回忆之前看过的内容",
+  "40": "正在翻资料、查文档",
+  "16": "正在专注盯着一行日志或代码",
+  "13": "刚看到意料之外的东西",
+  "14": "被夸得有点不好意思",
+  "33": "刚把任务跑完",
+  "34": "遇到报错了",
+  "07": "精神抖擞准备开工",
+  "19": "事情办妥了，很满意"
+};
+
+/** 取当前活动的描述（拿不到就返回空串，让说话模块走"没上下文"分支）。 */
+function activityText(moodId) {
+  return ACTIVITY_TEXT[String(moodId || "")] || "";
+}
+
 /* 任务跑完的「松一口气」：短暂一个情绪化收尾，再交回大脑 / 待机 */
 var RELIEF_EMOTIONS = ["19", "10", "33"];
 var RELIEF_MS = 1400;
@@ -734,10 +757,13 @@ function FloatBall() {
      * 当前值；权威场景（心情刚切到 12）直接用目标值，避免回读到旧表情。 */
     var el = ref.current;
     var shownNow = authoritative ? "" : (el && el.__dfbEngine ? el.__dfbEngine.emotionId : "");
+    var targetId = shownNow || moodId;
     sayNow({
-      mood: shownNow || moodId,
+      mood: targetId,
       moodName: found ? found.name : "",
       reason: reason || brain.reason || "",
+      /* 把「此刻在做什么」当作上下文传下去，台词才有具体内容 */
+      activity: activityText(targetId),
       user: context.user || "",
       assistant: context.assistant || "",
       force: force === true
