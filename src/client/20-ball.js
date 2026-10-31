@@ -476,9 +476,21 @@ function FloatBall() {
        * 与面板里「任务结束回到你选的表情」的说明相悖。 */
       var wanted = null;
       var brainId = ui.brain && ui.brain.id;
+      /* 跑任务时也让 AI 的心情说话。
+       * 旧逻辑的 running 分支直接忽略 brainId，只认 taskMood / 「思考中」，
+       * 于是「AI 判断出用户此刻在生气」这件事，在长达几分钟的任务里完全不生效——
+       * 球从头到尾只有一张工作脸。这就是「表情调用不多」最硬的一处原因。
+       *
+       * 新优先级（任务中）：小动作的工作表情 > AI 心情 > 思考中
+       * 小动作每秒都在变，如果让它无条件压住 AI，AI 又完全没用了；所以反过来：
+       * AI 有心结果时，让工作动画**围绕 AI 的表情**做（见 24-life.js 的 pickWork），
+       * 而不是把 AI 结果丢掉。 */
       if (ui.running) {
+        /* 任务中：工作动画优先，但它会参考 brainId 挑表情（24-life 里处理） */
         wanted = (cfg.anim !== false && ui.taskMood) || AUTO_RUNNING_EMOTION;
         if (cfg.auto === false) wanted = null;
+        /* AI 判断出强烈情绪时，允许它盖掉工作表情——用户骂人时球不该还在笑 */
+        if (cfg.brain === true && brainId) wanted = brainId;
       } else if (cfg.brain === true && brainId) {
         wanted = brainId;
       } else if (cfg.auto !== false) {

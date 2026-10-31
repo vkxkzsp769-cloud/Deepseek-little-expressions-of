@@ -67,10 +67,14 @@ var DEFAULT_CFG = {
   /* sayLocal：只用本地台词库，不调用模型 */
   sayLocal: false,
   /* brainOn：触发时机
-   *   'task'    默认：整轮任务结束才判断一次（最省，30 分钟任务 ≈ 1 次调用）
-   *   'message' 每条助手消息结束时判断一次（更灵敏，按 25 秒节流）
+   *   'task'    整轮任务结束才判断一次（最省，30 分钟任务 ≈ 1 次调用）
+   *   'message' 每条助手消息结束时判断一次（更灵敏，按 20 秒节流）
+   *
+   * 默认改成 'message'：'task' 下 30 分钟的任务整场只判断一次，
+   * 表情在一整场任务里几乎不动，这就是「AI 调用的表情不多」的第二个原因。
+   * 单次调用极短（约 0.3k 输入 / 0.2k 输出），20 秒节流后的开销仍然很小。
    */
-  brainOn: "task",
+  brainOn: "message",
   /* 大脑用哪个模型；留空 = 用 dsh 的默认 Agent 模型 */
   brainProvider: "",
   brainModel: "",
@@ -218,7 +222,7 @@ function mergeCfg(raw) {
     pricing: src.pricing !== false,
     pricingMode: src.pricingMode === "peak" || src.pricingMode === "offpeak" ? src.pricingMode : "auto",
     sayLocal: src.sayLocal === true,
-    brainOn: src.brainOn === "message" ? "message" : "task",
+    brainOn: src.brainOn === "task" ? "task" : "message",
     brainProvider: typeof src.brainProvider === "string" ? src.brainProvider : "",
     brainModel: typeof src.brainModel === "string" ? src.brainModel : "",
     seenHint: src.seenHint === true
